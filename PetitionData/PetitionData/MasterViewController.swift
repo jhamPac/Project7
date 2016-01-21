@@ -14,8 +14,45 @@ class MasterViewController: UITableViewController {
     var objects = [[String : String]]()
 
 
-    override func viewDidLoad() {
+    override func viewDidLoad()
+    {
         super.viewDidLoad()
+        
+        let urlString: String
+        
+        if navigationController?.tabBarItem.tag == 0
+        {
+            urlString = "https://api.whitehouse.gov/v1/petitions.json?limit=100"
+        }
+        else
+        {
+            urlString = "https://api.whitehouse.gov/v1/petitions.json?signatureCountFloor=10000&limit=100"
+        }
+        
+        if let url = NSURL(string: urlString)
+        {
+            if let data = try? NSData(contentsOfURL: url, options: [])
+            {
+                let json = JSON(data: data)
+                
+                if json["metadata"]["responseInfo"]["status"].intValue == 200
+                {
+                    parseJSON(json)
+                }
+                else
+                {
+                    showError()
+                }
+            }
+            else
+            {
+                showError()
+            }
+        }
+        else
+        {
+            showError()
+        }
     }
 
     override func viewWillAppear(animated: Bool) {
@@ -36,6 +73,27 @@ class MasterViewController: UITableViewController {
             }
         }
     }
+    
+    func parseJSON(json: JSON)
+    {
+        for result in json["results"].arrayValue
+        {
+            let title = result["title"].stringValue
+            let body = result["body"].stringValue
+            let sigs = result["signatureCount"].stringValue
+            let obj = ["title": title, "body": body, "sigs": sigs]
+            objects.append(obj)
+        }
+        
+        tableView.reloadData()
+    }
+    
+    func showError()
+    {
+        let ac = UIAlertController(title: "Loading error", message: "Unfortunately there was a loading error", preferredStyle: .Alert)
+        ac.addAction(UIAlertAction(title: "OK", style: .Default, handler: nil))
+        presentViewController(ac, animated: true, completion: nil)
+    }
 
     // MARK: - Table View
 
@@ -51,7 +109,8 @@ class MasterViewController: UITableViewController {
         let cell = tableView.dequeueReusableCellWithIdentifier("Cell", forIndexPath: indexPath)
 
         let object = objects[indexPath.row]
-        cell.textLabel!.text = object.description
+        cell.textLabel!.text = object["title"]
+        cell.detailTextLabel!.text = object["body"]
         return cell
     }
 }
